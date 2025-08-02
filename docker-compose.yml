@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:15
+    container_name: banking_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: banking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:6
+    container_name: banking_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: banking_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Management UI
+
+  api:
+    build: ./cmd/api
+    container_name: banking_api
+    depends_on:
+      - postgres
+      - mongo
+      - rabbitmq
+    ports:
+      - "8080:8080"
+
+  worker:
+    build: ./cmd/worker
+    container_name: banking_worker
+    depends_on:
+      - postgres
+      - mongo
+      - rabbitmq
+
+volumes:
+  postgres_data:
+  mongo_data:
