@@ -22,18 +22,26 @@ func main() {
 	}
 	defer mongoClient.Disconnect(nil)
 
-	// Queue
+	// Queue (RabbitMQ)
 	_, ch, err := queue.ConnectRabbit()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	svc := &services.Service{PG: pg, MQ: ch, MongoDB: mongoCol}
+	
 	h := &handlers.Handler{S: svc}
+// Start RabbitMQ consumer
+queue.StartConsumer(svc)
 
 	r := gin.Default()
+
+	// Routes
 	r.POST("/accounts", h.CreateAccount)
+	r.GET("/accounts/:id", h.GetAccount)
 	r.POST("/transactions", h.NewTransaction)
+	r.GET("/accounts/:id/transactions", h.GetTransactionHistory)
+	r.GET("/health", h.HealthCheck)
 
 	log.Println("API running on :8080")
 	r.Run(":8080")

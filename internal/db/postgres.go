@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,6 +27,7 @@ func ConnectPostgres() (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to migrate Postgres: %w", err)
 	}
+	log.Println("Connected to Postgres")
 
 	return pool, nil
 }

@@ -4,14 +4,14 @@ import (
 	"banking-ledger/internal/db"
 	"banking-ledger/internal/models"
 	"banking-ledger/internal/queue"
+	"banking-ledger/internal/services"
 	"context"
 	"encoding/json"
 	"log"
-
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func main() {
+	// DB connections
 	pg, err := db.ConnectPostgres()
 	if err != nil {
 		log.Fatal(err)
@@ -22,59 +22,54 @@ func main() {
 	}
 	defer mongoClient.Disconnect(nil)
 
-	_, ch, err := queue.ConnectRabbit()
+	// RabbitMQ
+	conn, ch, err := queue.ConnectRabbit()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
+	defer ch.Close()
 
-	msgs, err := ch.Consume("transactions", "", true, false, false, false, nil)
+	svc := &services.Service{PG: pg, MQ: ch, MongoDB: mongoCol}
+
+	msgs, err := ch.Consume(
+		"transactions", // queue
+		"",             // consumer name
+		true,           // auto-ack
+		false,          // exclusive
+		false,          // no-local
+		false,          // no-wait
+		nil,
+	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to register consumer: %v", err)
 	}
 
-	log.Println("Worker listening for transactions...")
+	log.Println("Worker started. Listening for transactions...")
 
-	forever := make(chan bool)
-
-	go func() {
-		for d := range msgs {
-			var tx models.Transaction
-			if err := json.Unmarshal(d.Body, &tx); err != nil {
-				log.Println("Invalid message:", err)
-				continue
-			}
-
-			// Apply transaction
-			var newBalance int64
-			if tx.Type == "deposit" {
-				err = pg.QueryRow(context.Background(),
-					"UPDATE accounts SET balance = balance + $1 WHERE id=$2 RETURNING balance",
-					tx.Amount, tx.AccountID).Scan(&newBalance)
-			} else if tx.Type == "withdraw" {
-				err = pg.QueryRow(context.Background(),
-					"UPDATE accounts SET balance = balance - $1 WHERE id=$2 AND balance >= $1 RETURNING balance",
-					tx.Amount, tx.AccountID).Scan(&newBalance)
-			}
-
-			if err != nil {
-				tx.Status = "failed"
-			} else {
-				tx.Status = "success"
-			}
-
-			_, err = mongoCol.InsertOne(context.Background(), bson.M{
-				"transaction_id": tx.ID,
-				"account_id":     tx.AccountID,
-				"type":           tx.Type,
-				"amount":         tx.Amount,
-				"status":         tx.Status,
-				"created_at":     tx.CreatedAt,
-			})
-			if err != nil {
-				log.Println("Mongo insert failed:", err)
-			}
+	// process messages
+	for d := range msgs {
+		var txn models.Transaction
+		if err := json.Unmarshal(d.Body, &txn); err != nil {
+			log.Printf("Invalid transaction JSON: %v", err)
+			continue
 		}
-	}()
 
-	<-forever
+		// process in Postgres
+		err := svc.ProcessTransaction(&txn)
+		if err != nil {
+			log.Printf("Failed to process txn %s: %v", txn.ID, err)
+			txn.Status = "failed"
+		} else {
+			txn.Status = "success"
+		}
+
+		// log in MongoDB
+		_, err = svc.MongoDB.InsertOne(context.Background(), txn)
+		if err != nil {
+			log.Printf("Failed to insert txn into MongoDB: %v", err)
+		}
+
+		log.Printf("Processed transaction: %+v", txn)
+	}
 }

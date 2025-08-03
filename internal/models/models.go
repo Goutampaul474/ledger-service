@@ -12,10 +12,11 @@ type Account struct {
 
 // MongoDB: Transactions
 type Transaction struct {
-	ID        string    `json:"id"`
-	AccountID string    `json:"account_id"`
-	Type      string    `json:"type"` // deposit | withdraw
-	Amount    int64     `json:"amount"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+    ID        string    `json:"id" bson:"id"`
+    AccountID string    `json:"account_id" bson:"accountid"`
+    Type      string    `json:"type" bson:"type"`
+    Amount    int64     `json:"amount" bson:"amount"`
+    Status    string    `json:"status" bson:"status"`
+    CreatedAt time.Time `json:"created_at" bson:"createdat"`
 }
+
