@@ -1,38 +1,33 @@
-version: "3.9"
 services:
   postgres:
-    image: postgres:15
-    container_name: banking_postgres
-    restart: always
+    image: postgres:16
     environment:
-      POSTGRES_USER: user
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: banking
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mongo:
     image: mongo:6
-    container_name: banking_mongo
-    restart: always
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - mongodata:/data/db
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: banking_rabbitmq
-    restart: always
     ports:
       - "5672:5672"
-      - "15672:15672" # Management UI
+      - "15672:15672"
 
   api:
-    build: ./cmd/api
-    container_name: banking_api
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     depends_on:
       - postgres
       - mongo
@@ -41,13 +36,14 @@ services:
       - "8080:8080"
 
   worker:
-    build: ./cmd/worker
-    container_name: banking_worker
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     depends_on:
       - postgres
       - mongo
       - rabbitmq
 
 volumes:
-  postgres_data:
-  mongo_data:
+  pgdata:
+  mongodata:

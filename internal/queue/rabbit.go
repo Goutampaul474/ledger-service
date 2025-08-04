@@ -1,13 +1,14 @@
 package queue
 
 import (
+	"banking-ledger/internal/config"
 	"log"
 
 	"github.com/streadway/amqp"
 )
 
 func ConnectRabbit() (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial(config.RabbitURI)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -18,7 +19,7 @@ func ConnectRabbit() (*amqp.Connection, *amqp.Channel, error) {
 	}
 
 	_, err = ch.QueueDeclare(
-		"transactions",
+		config.TransactionsQ,
 		true,
 		false,
 		false,
