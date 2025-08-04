@@ -240,6 +240,4 @@ Run API + Worker separately for full functionality.
 ✅ Next Steps
 Add unit tests (mocking Postgres, MongoDB, RabbitMQ).
 
-Add Docker + docker-compose for one‑command setup.
-
 Add retry logic for failed transactions.
