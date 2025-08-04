@@ -1,6 +1,7 @@
 package db
 
 import (
+	"banking-ledger/internal/config"
 	"context"
 	"log"
 
@@ -9,12 +10,12 @@ import (
 )
 
 func ConnectMongo() (*mongo.Client, *mongo.Collection, error) {
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.MongoURI))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	collection := client.Database("banking").Collection("transactions")
+	collection := client.Database(config.MongoDB).Collection(config.MongoColl)
 	log.Println("Connected to MongoDB")
 	return client, collection, nil
 }
