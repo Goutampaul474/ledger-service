@@ -5,5 +5,4 @@ import (
 )
 
 type Handler struct {
-	S *services.Service
-}
+S services.ServiceInterface}

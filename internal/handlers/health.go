@@ -7,10 +7,11 @@ import (
 )
 
 func (h *Handler) HealthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status":   "ok",
-		"postgres": h.S.PG != nil,
-		"mongodb":  h.S.MongoDB != nil,
-		"rabbitmq": h.S.MQ != nil,
-	})
+    healthy := h.S.IsPostgresHealthy() && h.S.IsMongoHealthy() && h.S.IsRabbitMQHealthy()
+    if !healthy {
+        c.JSON(http.StatusInternalServerError, gin.H{"status": "unhealthy"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
+
