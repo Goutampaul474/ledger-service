@@ -236,6 +236,7 @@ RabbitMQ decouples transaction requests from processing → improves scalability
 
 Run API + Worker separately for full functionality.
 
+clone repo → docker compose up --build → test APIs
 
 ✅ Next Steps
 Add unit tests (mocking Postgres, MongoDB, RabbitMQ).

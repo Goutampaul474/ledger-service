@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/streadway/amqp"
 	"encoding/json"
 
 )
@@ -32,19 +31,16 @@ func (h *Handler) NewTransaction(c *gin.Context) {
         CreatedAt: time.Now(),
     }
 
-    body, err := json.Marshal(txn)
+    _, err := json.Marshal(txn)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode transaction"})
         return
     }
 
-    err = h.S.MQ.Publish(
-        "", "transactions", false, false,
-        amqp.Publishing{
-            ContentType: "application/json",
-            Body:        body,
-        },
-    )
+   if err := h.S.PublishTransaction(txn); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to enqueue transaction"})
+        return
+    }
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to enqueue transaction"})
         return
